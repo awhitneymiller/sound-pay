@@ -18,7 +18,7 @@ const TODAY = "2026-04-30";
 type Category = (typeof PAYMENT_CATEGORIES)[number];
 type MemberStatus = "paid" | "pending" | "unpaid";
 type PaymentStatus = MemberStatus;
-type ViewKey = "dashboard" | "balances" | "expenses" | "payments" | "reports" | "members";
+type ViewKey = "dashboard" | "balances" | "expenses" | "payments" | "revenue" | "reports" | "members";
 type ModalType = "expense" | "request" | "send" | "invite" | null;
 
 type Member = {
@@ -60,6 +60,17 @@ type PaymentRow = Payment & {
   memberName: string;
 };
 
+type GigPayout = {
+  id: string;
+  gigTitle: string;
+  venue: string;
+  market: string;
+  showDate: string;
+  payoutDate: string;
+  amount: number;
+  payoutMethod: string;
+};
+
 type Activity = {
   id: string;
   title: string;
@@ -92,6 +103,7 @@ const navItems: NavItem[] = [
   { id: "balances", label: "Balances", icon: BalanceIcon },
   { id: "expenses", label: "Expenses", icon: ExpenseIcon },
   { id: "payments", label: "Payments", icon: PaymentIcon },
+  { id: "revenue", label: "Revenue", icon: RevenueIcon },
   { id: "reports", label: "Reports", icon: ReportIcon },
   { id: "members", label: "Members", icon: MembersIcon },
 ];
@@ -175,6 +187,49 @@ const initialPayments: Payment[] = [
     status: "paid",
     receiptLabel: "Fuel Reimbursement Receipt",
     receiptNote: "Tour van fuel repayment cleared with Aiden after rehearsal week.",
+  },
+];
+
+const initialGigPayouts: GigPayout[] = [
+  {
+    id: "g-1",
+    gigTitle: "Love On Tour Opener",
+    venue: "Madison Square Garden",
+    market: "New York, NY",
+    showDate: "2026-04-25",
+    payoutDate: "2026-04-28",
+    amount: 1800,
+    payoutMethod: "ACH",
+  },
+  {
+    id: "g-2",
+    gigTitle: "Short n' Sweet Tour Opener",
+    venue: "The Forum",
+    market: "Inglewood, CA",
+    showDate: "2026-04-11",
+    payoutDate: "2026-04-12",
+    amount: 1450,
+    payoutMethod: "Venue transfer",
+  },
+  {
+    id: "g-3",
+    gigTitle: "The Eras Tour Opening Set",
+    venue: "Red Rocks Amphitheatre",
+    market: "Morrison, CO",
+    showDate: "2026-03-29",
+    payoutDate: "2026-04-02",
+    amount: 2200,
+    payoutMethod: "Wire",
+  },
+  {
+    id: "g-4",
+    gigTitle: "Cowboy Carter Tour Opener",
+    venue: "Hollywood Bowl",
+    market: "Los Angeles, CA",
+    showDate: "2026-03-15",
+    payoutDate: "2026-03-18",
+    amount: 950,
+    payoutMethod: "ACH",
   },
 ];
 
@@ -611,6 +666,7 @@ export default function Home() {
                 onOpenReceipt={setSelectedReceipt}
               />
             )}
+            {activeView === "revenue" && <RevenueView payouts={initialGigPayouts} />}
             {activeView === "reports" && <ReportsView />}
             {activeView === "members" && <MembersView members={memberRows} onInvite={() => setActiveModal("invite")} />}
           </section>
@@ -1243,6 +1299,107 @@ function PaymentsView({
   );
 }
 
+function RevenueView({ payouts }: { payouts: GigPayout[] }) {
+  const totalRevenue = payouts.reduce((sum, payout) => sum + payout.amount, 0);
+  const latestPayout = payouts[0];
+  const highestPayout = payouts.reduce<GigPayout | null>(
+    (top, payout) => (top && top.amount > payout.amount ? top : payout),
+    null,
+  );
+
+  return (
+    <div className="mt-6 space-y-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <article className="app-subcard">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ink-300)]">Total Gig Revenue</p>
+          <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#6ee7b5]">{formatCurrency(totalRevenue)}</p>
+          <p className="mt-2 text-sm text-[var(--ink-200)]">{payouts.length} paid gigs logged</p>
+        </article>
+        <article className="app-subcard">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ink-300)]">Latest Payout</p>
+          <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
+            {latestPayout ? formatCurrency(latestPayout.amount) : "-"}
+          </p>
+          <p className="mt-2 text-sm text-[var(--ink-200)]">
+            {latestPayout ? `${latestPayout.gigTitle} on ${formatDate(latestPayout.payoutDate)}` : "No payout yet"}
+          </p>
+        </article>
+        <article className="app-subcard">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ink-300)]">Top Paying Gig</p>
+          <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white">
+            {highestPayout ? formatCurrency(highestPayout.amount) : "-"}
+          </p>
+          <p className="mt-2 text-sm text-[var(--ink-200)]">{highestPayout?.gigTitle ?? "No gigs logged"}</p>
+        </article>
+      </div>
+
+      <section className="app-card overflow-hidden">
+        <header className="border-b border-white/10 px-5 py-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">Revenue</h2>
+            <p className="text-sm text-[var(--ink-200)]">
+              Track what each gig paid, when it landed, and where the show happened
+            </p>
+          </div>
+        </header>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[920px] text-left">
+            <thead className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-[var(--ink-300)]">
+              <tr>
+                <th className="px-5 py-3 font-semibold">Gig</th>
+                <th className="px-5 py-3 font-semibold">Venue</th>
+                <th className="px-5 py-3 font-semibold">Show Date</th>
+                <th className="px-5 py-3 font-semibold">Paid On</th>
+                <th className="px-5 py-3 font-semibold">Method</th>
+                <th className="px-5 py-3 font-semibold">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payouts.map((payout) => (
+                <tr key={payout.id} className="border-b border-white/6 last:border-b-0">
+                  <td className="px-5 py-4 text-white">{payout.gigTitle}</td>
+                  <td className="px-5 py-4 text-[var(--ink-100)]">
+                    <div>
+                      <p>{payout.venue}</p>
+                      <p className="mt-1 text-sm text-[var(--ink-200)]">{payout.market}</p>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.showDate)}</td>
+                  <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.payoutDate)}</td>
+                  <td className="px-5 py-4 text-[var(--ink-100)]">{payout.payoutMethod}</td>
+                  <td className="px-5 py-4 font-semibold text-white">{formatCurrency(payout.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="space-y-3 p-4 md:hidden">
+          {payouts.map((payout) => (
+            <article key={payout.id} className="app-subcard">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-white">{payout.gigTitle}</p>
+                  <p className="text-sm text-[var(--ink-200)]">
+                    {payout.venue} · {payout.market}
+                  </p>
+                </div>
+                <p className="font-semibold text-white">{formatCurrency(payout.amount)}</p>
+              </div>
+              <div className="mt-3 grid gap-2 text-sm text-[var(--ink-100)]">
+                <p>Show date: {formatDate(payout.showDate)}</p>
+                <p>Paid on: {formatDate(payout.payoutDate)}</p>
+                <p>Method: {payout.payoutMethod}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ReportsView() {
   const net = monthlyRevenue.map((value, index) => value - monthlyExpenses[index]);
 
@@ -1618,6 +1775,16 @@ function PaymentIcon({ className = "" }: { className?: string }) {
       <path d="M4 6.5H16M4 13.5H16" stroke="currentColor" strokeWidth="1.6" />
       <path d="M6.5 4L4 6.5L6.5 9" stroke="currentColor" strokeWidth="1.6" />
       <path d="M13.5 11L16 13.5L13.5 16" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+function RevenueIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className} aria-hidden="true">
+      <path d="M4 14.5L8 10.5L11 13.5L16 8.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M12.5 8.5H16V12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 4.5V16H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
