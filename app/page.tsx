@@ -666,7 +666,7 @@ export default function Home() {
                 onOpenReceipt={setSelectedReceipt}
               />
             )}
-            {activeView === "revenue" && <RevenueView payouts={initialGigPayouts} />}
+            {activeView === "revenue" && <RevenueView payouts={initialGigPayouts} members={members} />}
             {activeView === "reports" && <ReportsView />}
             {activeView === "members" && <MembersView members={memberRows} onInvite={() => setActiveModal("invite")} />}
           </section>
@@ -1299,13 +1299,19 @@ function PaymentsView({
   );
 }
 
-function RevenueView({ payouts }: { payouts: GigPayout[] }) {
+function RevenueView({ payouts, members }: { payouts: GigPayout[]; members: Member[] }) {
   const totalRevenue = payouts.reduce((sum, payout) => sum + payout.amount, 0);
   const latestPayout = payouts[0];
   const highestPayout = payouts.reduce<GigPayout | null>(
     (top, payout) => (top && top.amount > payout.amount ? top : payout),
     null,
   );
+  const paidToNames = useMemo(() => {
+    const preferred = members.filter((member) => !member.isCurrentUser);
+    const candidates = (preferred.length >= 3 ? preferred : members).slice(0, 3).map((member) => member.name);
+
+    return candidates.length ? candidates : ["-"];
+  }, [members]);
 
   return (
     <div className="mt-6 space-y-4">
@@ -1344,7 +1350,7 @@ function RevenueView({ payouts }: { payouts: GigPayout[] }) {
         </header>
 
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[920px] text-left">
+          <table className="w-full min-w-[1040px] text-left">
             <thead className="border-b border-white/10 text-xs uppercase tracking-[0.2em] text-[var(--ink-300)]">
               <tr>
                 <th className="px-5 py-3 font-semibold">Gig</th>
@@ -1352,48 +1358,59 @@ function RevenueView({ payouts }: { payouts: GigPayout[] }) {
                 <th className="px-5 py-3 font-semibold">Show Date</th>
                 <th className="px-5 py-3 font-semibold">Paid On</th>
                 <th className="px-5 py-3 font-semibold">Method</th>
+                <th className="px-5 py-3 font-semibold">Paid to</th>
                 <th className="px-5 py-3 font-semibold">Amount</th>
               </tr>
             </thead>
             <tbody>
-              {payouts.map((payout) => (
-                <tr key={payout.id} className="border-b border-white/6 last:border-b-0">
-                  <td className="px-5 py-4 text-white">{payout.gigTitle}</td>
-                  <td className="px-5 py-4 text-[var(--ink-100)]">
-                    <div>
-                      <p>{payout.venue}</p>
-                      <p className="mt-1 text-sm text-[var(--ink-200)]">{payout.market}</p>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.showDate)}</td>
-                  <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.payoutDate)}</td>
-                  <td className="px-5 py-4 text-[var(--ink-100)]">{payout.payoutMethod}</td>
-                  <td className="px-5 py-4 font-semibold text-white">{formatCurrency(payout.amount)}</td>
-                </tr>
-              ))}
+              {payouts.map((payout, index) => {
+                const paidTo = paidToNames[index % paidToNames.length];
+
+                return (
+                  <tr key={payout.id} className="border-b border-white/6 last:border-b-0">
+                    <td className="px-5 py-4 text-white">{payout.gigTitle}</td>
+                    <td className="px-5 py-4 text-[var(--ink-100)]">
+                      <div>
+                        <p>{payout.venue}</p>
+                        <p className="mt-1 text-sm text-[var(--ink-200)]">{payout.market}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.showDate)}</td>
+                    <td className="px-5 py-4 text-[var(--ink-100)]">{formatDate(payout.payoutDate)}</td>
+                    <td className="px-5 py-4 text-[var(--ink-100)]">{payout.payoutMethod}</td>
+                    <td className="px-5 py-4 text-[var(--ink-100)]">{paidTo}</td>
+                    <td className="px-5 py-4 font-semibold text-white">{formatCurrency(payout.amount)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         <div className="space-y-3 p-4 md:hidden">
-          {payouts.map((payout) => (
-            <article key={payout.id} className="app-subcard">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold text-white">{payout.gigTitle}</p>
-                  <p className="text-sm text-[var(--ink-200)]">
-                    {payout.venue} · {payout.market}
-                  </p>
+          {payouts.map((payout, index) => {
+            const paidTo = paidToNames[index % paidToNames.length];
+
+            return (
+              <article key={payout.id} className="app-subcard">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-white">{payout.gigTitle}</p>
+                    <p className="text-sm text-[var(--ink-200)]">
+                      {payout.venue} · {payout.market}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-white">{formatCurrency(payout.amount)}</p>
                 </div>
-                <p className="font-semibold text-white">{formatCurrency(payout.amount)}</p>
-              </div>
-              <div className="mt-3 grid gap-2 text-sm text-[var(--ink-100)]">
-                <p>Show date: {formatDate(payout.showDate)}</p>
-                <p>Paid on: {formatDate(payout.payoutDate)}</p>
-                <p>Method: {payout.payoutMethod}</p>
-              </div>
-            </article>
-          ))}
+                <div className="mt-3 grid gap-2 text-sm text-[var(--ink-100)]">
+                  <p>Show date: {formatDate(payout.showDate)}</p>
+                  <p>Paid on: {formatDate(payout.payoutDate)}</p>
+                  <p>Method: {payout.payoutMethod}</p>
+                  <p>Paid to: {paidTo}</p>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>
